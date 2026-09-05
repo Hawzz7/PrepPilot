@@ -8,11 +8,10 @@ import userRouter from "./routes/user.route.js";
 import interviewRouter from "./routes/interview.route.js";
 import paymentRouter from "./routes/payment.route.js";
 
-
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", process.env.FRONTEND_URL],
     credentials: true,
   }),
 );
@@ -22,11 +21,16 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
-app.use("/api/interview", interviewRouter)
+app.use("/api/interview", interviewRouter);
 app.use("/api/payment", paymentRouter);
 
+// Backend health-check route
+app.get("/", (req, res) => {
+  res.send("🚀 API is Live! 🎉");
+});
+
 const PORT = process.env.PORT || 7000;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on PORT:${PORT}.`);
   connectDB();
 });
