@@ -5,25 +5,23 @@ import { FcGoogle } from "react-icons/fc";
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../utils/firebase.js";
 import axios from "axios";
-import { ServerURL } from "../App.jsx";
+import axiosInstance from "../services/axiosInstance.js";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import getCurrentUser from "../utils/getCurrentUser.js";
 
 const Auth = ({ isModal = false }) => {
-
-const navigate = useNavigate();
-const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleGoogleAuth = async () => {
     try {
       const response = await signInWithPopup(auth, provider);
-      let {displayName: name, email} = response.user
+      let { displayName: name, email } = response.user;
 
-      const result = await axios.post(
-        `${ServerURL}/api/auth/google`,
+      const result = await axiosInstance.post(
+        "/api/auth/google",
         { name, email },
-        { withCredentials: true },
       );
 
       await getCurrentUser(dispatch);

@@ -5,8 +5,7 @@ import { HiOutlineLogout } from "react-icons/hi";
 import { FaUserAstronaut } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { ServerURL } from "../App";
+import axiosInstance from "../services/axiosInstance.js";
 import { setUserData } from "../redux/userSlice";
 import AuthModal from "./AuthModal";
 
@@ -48,11 +47,7 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post(
-        `${ServerURL}/api/auth/logout`,
-        {},
-        { withCredentials: true },
-      );
+      await axiosInstance.post("/api/auth/logout");
       setShowUserPopup(false);
       setShowCreditPopup(false);
       dispatch(setUserData(null));
@@ -84,9 +79,9 @@ const Navbar = () => {
           <div className="relative" ref={creditPopupRef}>
             <button
               onClick={() => {
-                if(!userData){
+                if (!userData) {
                   setShowAuth(true);
-                  return
+                  return;
                 }
                 setShowUserPopup(false);
                 setShowCreditPopup((prev) => !prev);
@@ -116,9 +111,9 @@ const Navbar = () => {
           <div className="relative" ref={userPopupRef}>
             <button
               onClick={() => {
-                if(!userData){
+                if (!userData) {
                   setShowAuth(true);
-                  return
+                  return;
                 }
                 setShowCreditPopup(false);
                 setShowUserPopup((prev) => !prev);
@@ -143,8 +138,9 @@ const Navbar = () => {
                   Interview History
                 </button>
                 <button
-                onClick={handleLogout}
-                className="w-full text-left text-sm py-2 flex items-center gap-2 text-red-500">
+                  onClick={handleLogout}
+                  className="w-full text-left text-sm py-2 flex items-center gap-2 text-red-500"
+                >
                   <HiOutlineLogout size={16} />
                   Logout
                 </button>
