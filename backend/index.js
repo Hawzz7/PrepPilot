@@ -9,9 +9,21 @@ import interviewRouter from "./routes/interview.route.js";
 import paymentRouter from "./routes/payment.route.js";
 
 const app = express();
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://prep-pilot-snowy.vercel.app",
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: function (origin, callback) {
+      // Allow requests without an origin, such as Postman or server-side requests
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   }),
 );
