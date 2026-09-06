@@ -9,8 +9,6 @@ import History from "./pages/History";
 import Step3Report from "./components/Step3Report";
 import Pricing from "./pages/Pricing";
 
-export const ServerURL = "http://localhost:8000";
-
 const App = () => {
   const dispatch = useDispatch();
 
