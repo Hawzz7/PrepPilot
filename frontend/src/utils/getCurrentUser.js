@@ -1,53 +1,38 @@
-import axios from "axios";
+import axiosInstance from "../services/axiosInstance.js";
 import { setUserData } from "../redux/userSlice";
-import { ServerURL } from "../App";
 
 const getCurrentUser = async (dispatch) => {
   try {
-    // Get current user
-    const { data } = await axios.get(`${ServerURL}/api/user/current-user`, {
-      withCredentials: true,
-    });
+    const { data } = await axiosInstance.get("/api/user/current-user");
 
     dispatch(setUserData(data.user));
 
     return data.user;
   } catch (error) {
-
-    // Access token expired
     if (error.response?.status === 401) {
       try {
-        // Generate a new access token
-        await axios.post(
-          `${ServerURL}/api/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          },
-        );
+        await axiosInstance.post("/api/auth/refresh", {});
 
-        // Try again with the new access token
-        const { data } = await axios.get(`${ServerURL}/api/user/current-user`, {
-          withCredentials: true,
-        });
+        const { data } = await axiosInstance.get(
+          "/api/user/current-user",
+        );
 
         dispatch(setUserData(data.user));
 
         return data.user;
-      } catch (error) {
+      } catch (refreshError) {
         console.log("Session expired. Please login again.");
 
         dispatch(setUserData(null));
 
         return null;
       }
-    } else {
-      console.error(error);
-
-      dispatch(setUserData(null));
-
-      return null;
     }
+
+    console.error(error);
+    dispatch(setUserData(null));
+
+    return null;
   }
 };
 
