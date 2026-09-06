@@ -2,10 +2,13 @@ import { generateAccessToken, generateRefreshToken } from "../config/token.js";
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const cookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
 };
 
 const setAuthCookies = (res, accessToken, refreshToken = null) => {
@@ -141,10 +144,7 @@ export const logout = async (req, res) => {
     }
 
     // Verify Refresh Token
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
     // Find User
     const user = await User.findById(decoded.userId);
