@@ -12,7 +12,8 @@ import {
   generateQuestionsWithRAG,
 } from "../services/rag.service.js";
 import { getEffectivePlan, hasFeature } from "../utils/planAccess.js";
-import PDFDocument from "pdfkit"
+import PDFDocument from "pdfkit";
+import path from "path";
 
 export const analyzeResume = async (req, res) => {
   try {
@@ -30,7 +31,13 @@ export const analyzeResume = async (req, res) => {
       });
     }
 
-    const filePath = req.file.path;
+    const filePath = path.resolve(req.file.path);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        message: "Uploaded resume file was not found.",
+      });
+    }
 
     // Read uploaded PDF
     const fileBuffer = await fs.promises.readFile(filePath);
@@ -176,12 +183,15 @@ Never leave experienceLevel empty.
     }
 
     // Delete uploaded PDF
-    await fs.promises.unlink(filePath);
-
     await storeResumeEmbeddings({
       user,
       parsedResume: parsed,
     });
+
+    // Delete uploaded PDF after successful processing
+    if (fs.existsSync(filePath)) {
+      await fs.promises.unlink(filePath);
+    }
 
     console.log("====================================");
     console.log("Resume Indexed Successfully");
@@ -214,8 +224,10 @@ Never leave experienceLevel empty.
   } catch (error) {
     console.error("Resume Analysis Error:", error);
 
-    if (req.file && fs.existsSync(req.file.path)) {
-      await fs.promises.unlink(req.file.path);
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      await fs.promises.unlink(req.file.path).catch((cleanupError) => {
+        console.error("Temporary file cleanup failed:", cleanupError);
+      });
     }
 
     return res.status(500).json({
@@ -1531,8 +1543,7 @@ export const downloadInterviewPdf = async (req, res) => {
     // =====================================================
 
     const canDownloadPdf =
-      effectivePlan === "starter" ||
-      effectivePlan === "pro";
+      effectivePlan === "starter" || effectivePlan === "pro";
 
     if (!canDownloadPdf) {
       return res.status(403).json({
@@ -1564,10 +1575,8 @@ export const downloadInterviewPdf = async (req, res) => {
       }
 
       return (
-        values.reduce(
-          (sum, value) => sum + (Number(value) || 0),
-          0,
-        ) / values.length
+        values.reduce((sum, value) => sum + (Number(value) || 0), 0) /
+        values.length
       );
     };
 
@@ -1584,12 +1593,9 @@ export const downloadInterviewPdf = async (req, res) => {
     );
 
     const finalScore =
-      interview.finalScore !== undefined &&
-      interview.finalScore !== null
+      interview.finalScore !== undefined && interview.finalScore !== null
         ? Number(interview.finalScore)
-        : calculateAverage(
-            questions.map((question) => question.score),
-          );
+        : calculateAverage(questions.map((question) => question.score));
 
     // =====================================================
     // FOLLOW-UP DATA
@@ -1609,14 +1615,11 @@ export const downloadInterviewPdf = async (req, res) => {
 
     const calculateDifficultyScore = (difficulty) => {
       const difficultyQuestions = questions.filter(
-        (question) =>
-          question.difficulty?.toLowerCase() === difficulty,
+        (question) => question.difficulty?.toLowerCase() === difficulty,
       );
 
       return calculateAverage(
-        difficultyQuestions.map(
-          (question) => question.score,
-        ),
+        difficultyQuestions.map((question) => question.score),
       );
     };
 
@@ -1636,10 +1639,7 @@ export const downloadInterviewPdf = async (req, res) => {
 
     res.setHeader("Content-Type", "application/pdf");
 
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${fileName}"`,
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
     // =====================================================
     // CREATE PDF
@@ -1656,18 +1656,13 @@ export const downloadInterviewPdf = async (req, res) => {
     // HEADER
     // =====================================================
 
-    doc
-      .fontSize(24)
-      .font("Helvetica-Bold")
-      .text("PrepPilot", {
-        align: "center",
-      });
+    doc.fontSize(24).font("Helvetica-Bold").text("PrepPilot", {
+      align: "center",
+    });
 
-    doc
-      .fontSize(18)
-      .text("AI Interview Report", {
-        align: "center",
-      });
+    doc.fontSize(18).text("AI Interview Report", {
+      align: "center",
+    });
 
     doc.moveDown();
 
@@ -1676,21 +1671,13 @@ export const downloadInterviewPdf = async (req, res) => {
       .font("Helvetica")
       .text(`Role: ${interview.role || "N/A"}`);
 
-    doc.text(
-      `Experience: ${interview.experience || "N/A"}`,
-    );
+    doc.text(`Experience: ${interview.experience || "N/A"}`);
 
-    doc.text(
-      `Interview Mode: ${interview.mode || "N/A"}`,
-    );
+    doc.text(`Interview Mode: ${interview.mode || "N/A"}`);
 
-    doc.text(
-      `Plan: ${effectivePlan.toUpperCase()}`,
-    );
+    doc.text(`Plan: ${effectivePlan.toUpperCase()}`);
 
-    doc.text(
-      `Status: ${interview.status || "N/A"}`,
-    );
+    doc.text(`Status: ${interview.status || "N/A"}`);
 
     doc.moveDown();
 
@@ -1698,10 +1685,7 @@ export const downloadInterviewPdf = async (req, res) => {
     // OVERALL SCORE
     // =====================================================
 
-    doc
-      .fontSize(16)
-      .font("Helvetica-Bold")
-      .text("Overall Performance");
+    doc.fontSize(16).font("Helvetica-Bold").text("Overall Performance");
 
     doc.moveDown(0.5);
 
@@ -1710,17 +1694,11 @@ export const downloadInterviewPdf = async (req, res) => {
       .font("Helvetica")
       .text(`Overall Score: ${finalScore.toFixed(1)}/10`);
 
-    doc.text(
-      `Confidence: ${confidence.toFixed(1)}/10`,
-    );
+    doc.text(`Confidence: ${confidence.toFixed(1)}/10`);
 
-    doc.text(
-      `Communication: ${communication.toFixed(1)}/10`,
-    );
+    doc.text(`Communication: ${communication.toFixed(1)}/10`);
 
-    doc.text(
-      `Correctness: ${correctness.toFixed(1)}/10`,
-    );
+    doc.text(`Correctness: ${correctness.toFixed(1)}/10`);
 
     doc.moveDown();
 
@@ -1728,10 +1706,7 @@ export const downloadInterviewPdf = async (req, res) => {
     // INTERVIEW STATISTICS
     // =====================================================
 
-    doc
-      .fontSize(16)
-      .font("Helvetica-Bold")
-      .text("Interview Statistics");
+    doc.fontSize(16).font("Helvetica-Bold").text("Interview Statistics");
 
     doc.moveDown(0.5);
 
@@ -1744,14 +1719,10 @@ export const downloadInterviewPdf = async (req, res) => {
 
     doc.text(`Skipped: ${skippedCount}`);
 
-    doc.text(
-      `Follow-up Questions: ${followUpQuestions.length}`,
-    );
+    doc.text(`Follow-up Questions: ${followUpQuestions.length}`);
 
     if (followUpQuestions.length > 0) {
-      doc.text(
-        `Follow-up Average: ${followUpAverage.toFixed(1)}/10`,
-      );
+      doc.text(`Follow-up Average: ${followUpAverage.toFixed(1)}/10`);
     }
 
     doc.moveDown();
@@ -1760,27 +1731,18 @@ export const downloadInterviewPdf = async (req, res) => {
     // DIFFICULTY PERFORMANCE
     // =====================================================
 
-    doc
-      .fontSize(16)
-      .font("Helvetica-Bold")
-      .text("Difficulty Performance");
+    doc.fontSize(16).font("Helvetica-Bold").text("Difficulty Performance");
 
     doc.moveDown(0.5);
 
     doc
       .fontSize(11)
       .font("Helvetica")
-      .text(
-        `Easy: ${difficultyPerformance.easy.toFixed(1)}/10`,
-      );
+      .text(`Easy: ${difficultyPerformance.easy.toFixed(1)}/10`);
 
-    doc.text(
-      `Medium: ${difficultyPerformance.medium.toFixed(1)}/10`,
-    );
+    doc.text(`Medium: ${difficultyPerformance.medium.toFixed(1)}/10`);
 
-    doc.text(
-      `Hard: ${difficultyPerformance.hard.toFixed(1)}/10`,
-    );
+    doc.text(`Hard: ${difficultyPerformance.hard.toFixed(1)}/10`);
 
     doc.moveDown();
 
@@ -1788,10 +1750,7 @@ export const downloadInterviewPdf = async (req, res) => {
     // QUESTION ANALYSIS
     // =====================================================
 
-    doc
-      .fontSize(16)
-      .font("Helvetica-Bold")
-      .text("Question Analysis");
+    doc.fontSize(16).font("Helvetica-Bold").text("Question Analysis");
 
     doc.moveDown();
 
@@ -1804,75 +1763,44 @@ export const downloadInterviewPdf = async (req, res) => {
       doc
         .fontSize(13)
         .font("Helvetica-Bold")
-        .text(
-          `Q${index + 1}. ${question.question || ""}`,
-        );
+        .text(`Q${index + 1}. ${question.question || ""}`);
 
       doc
         .fontSize(10)
         .font("Helvetica")
         .text(
-          `Type: ${
-            question.type === "followup"
-              ? "Follow-up"
-              : "Primary"
-          }`,
+          `Type: ${question.type === "followup" ? "Follow-up" : "Primary"}`,
         );
 
+      doc.text(`Difficulty: ${question.difficulty || "Medium"}`);
+
+      doc.text(`Score: ${Number(question.score || 0).toFixed(1)}/10`);
+
+      doc.text(`Confidence: ${Number(question.confidence || 0).toFixed(1)}/10`);
+
       doc.text(
-        `Difficulty: ${
-          question.difficulty || "Medium"
-        }`,
+        `Communication: ${Number(question.communication || 0).toFixed(1)}/10`,
       );
 
       doc.text(
-        `Score: ${Number(question.score || 0).toFixed(1)}/10`,
-      );
-
-      doc.text(
-        `Confidence: ${Number(
-          question.confidence || 0,
-        ).toFixed(1)}/10`,
-      );
-
-      doc.text(
-        `Communication: ${Number(
-          question.communication || 0,
-        ).toFixed(1)}/10`,
-      );
-
-      doc.text(
-        `Correctness: ${Number(
-          question.correctness || 0,
-        ).toFixed(1)}/10`,
+        `Correctness: ${Number(question.correctness || 0).toFixed(1)}/10`,
       );
 
       doc.moveDown(0.3);
 
-      doc
-        .font("Helvetica-Bold")
-        .text("Candidate Answer:");
+      doc.font("Helvetica-Bold").text("Candidate Answer:");
 
       doc
         .font("Helvetica")
         .text(
-          question.answer?.trim()
-            ? question.answer
-            : "No answer was provided.",
+          question.answer?.trim() ? question.answer : "No answer was provided.",
         );
 
       doc.moveDown(0.3);
 
-      doc
-        .font("Helvetica-Bold")
-        .text("AI Feedback:");
+      doc.font("Helvetica-Bold").text("AI Feedback:");
 
-      doc
-        .font("Helvetica")
-        .text(
-          question.feedback ||
-            "No feedback available.",
-        );
+      doc.font("Helvetica").text(question.feedback || "No feedback available.");
 
       doc.moveDown();
     });
@@ -1881,28 +1809,18 @@ export const downloadInterviewPdf = async (req, res) => {
     // PRO - ADVANCED AI FEEDBACK
     // =====================================================
 
-    if (
-      effectivePlan === "pro" &&
-      interview.advancedFeedback
-    ) {
+    if (effectivePlan === "pro" && interview.advancedFeedback) {
       if (doc.y > 650) {
         doc.addPage();
       }
 
-      doc
-        .fontSize(18)
-        .font("Helvetica-Bold")
-        .text("Advanced AI Feedback");
+      doc.fontSize(18).font("Helvetica-Bold").text("Advanced AI Feedback");
 
       doc.moveDown();
 
-      const advancedFeedback =
-        interview.advancedFeedback;
+      const advancedFeedback = interview.advancedFeedback;
 
-      doc
-        .fontSize(13)
-        .font("Helvetica-Bold")
-        .text("Overall Assessment");
+      doc.fontSize(13).font("Helvetica-Bold").text("Overall Assessment");
 
       doc
         .fontSize(10)
@@ -1914,51 +1832,27 @@ export const downloadInterviewPdf = async (req, res) => {
 
       doc.moveDown();
 
-      doc
-        .fontSize(13)
-        .font("Helvetica-Bold")
-        .text("Strengths");
+      doc.fontSize(13).font("Helvetica-Bold").text("Strengths");
 
-      (advancedFeedback.strengths || []).forEach(
-        (strength) => {
-          doc
-            .fontSize(10)
-            .font("Helvetica")
-            .text(`• ${strength}`);
-        },
-      );
+      (advancedFeedback.strengths || []).forEach((strength) => {
+        doc.fontSize(10).font("Helvetica").text(`• ${strength}`);
+      });
 
       doc.moveDown();
 
-      doc
-        .fontSize(13)
-        .font("Helvetica-Bold")
-        .text("Areas for Improvement");
+      doc.fontSize(13).font("Helvetica-Bold").text("Areas for Improvement");
 
-      (advancedFeedback.weaknesses || []).forEach(
-        (weakness) => {
-          doc
-            .fontSize(10)
-            .font("Helvetica")
-            .text(`• ${weakness}`);
-        },
-      );
+      (advancedFeedback.weaknesses || []).forEach((weakness) => {
+        doc.fontSize(10).font("Helvetica").text(`• ${weakness}`);
+      });
 
       doc.moveDown();
 
-      doc
-        .fontSize(13)
-        .font("Helvetica-Bold")
-        .text("Recommendations");
+      doc.fontSize(13).font("Helvetica-Bold").text("Recommendations");
 
-      (advancedFeedback.recommendations || []).forEach(
-        (recommendation) => {
-          doc
-            .fontSize(10)
-            .font("Helvetica")
-            .text(`• ${recommendation}`);
-        },
-      );
+      (advancedFeedback.recommendations || []).forEach((recommendation) => {
+        doc.fontSize(10).font("Helvetica").text(`• ${recommendation}`);
+      });
     }
 
     // =====================================================
@@ -1969,12 +1863,9 @@ export const downloadInterviewPdf = async (req, res) => {
       .moveDown(2)
       .fontSize(9)
       .font("Helvetica")
-      .text(
-        "Generated by PrepPilot AI Interview Platform",
-        {
-          align: "center",
-        },
-      );
+      .text("Generated by PrepPilot AI Interview Platform", {
+        align: "center",
+      });
 
     // =====================================================
     // FINISH PDF
@@ -1982,17 +1873,12 @@ export const downloadInterviewPdf = async (req, res) => {
 
     doc.end();
   } catch (error) {
-    console.error(
-      "Download Interview PDF Error:",
-      error,
-    );
+    console.error("Download Interview PDF Error:", error);
 
     if (!res.headersSent) {
       return res.status(500).json({
         success: false,
-        message:
-          error.message ||
-          "Failed to generate PDF report.",
+        message: error.message || "Failed to generate PDF report.",
       });
     }
   }
