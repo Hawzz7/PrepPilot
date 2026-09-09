@@ -1,10 +1,15 @@
-# PrepPilot
+# 🤖 PrepPilot
 
 PrepPilot is an AI-powered interview preparation platform that helps candidates prepare for technical and behavioral interviews through personalized resume analysis and AI-generated interview sessions.
 
 The platform analyzes a candidate’s resume, identifies their experience level, extracts important career information, and generates interview questions based on their skills, projects, role, and professional background.
 
-## Features
+## 🌐 Live Links
+
+- 🚀 **Live Website:** [Visit PrepPilot](https://prep-pilot-snowy.vercel.app/)
+- ⚙️ **Backend API:** [View Backend](https://preppilot-backend-cd05.onrender.com)
+
+## ✨ Features
 
 * Google authentication using Firebase
 * Resume upload and PDF text extraction
@@ -17,7 +22,7 @@ The platform analyzes a candidate’s resume, identifies their experience level,
 * Responsive user interface
 * Secure authentication using JWT and HTTP-only cookies
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 ### Frontend
 
@@ -55,7 +60,7 @@ The platform analyzes a candidate’s resume, identifies their experience level,
 * Firebase — Authentication
 * Git and GitHub — Version control
 
-## How It Works
+## 🔄 How It Works
 
 1. The user signs in using Google authentication.
 2. The user uploads a resume in PDF format.
@@ -66,7 +71,7 @@ The platform analyzes a candidate’s resume, identifies their experience level,
 7. The platform generates personalized interview questions based on the candidate’s profile.
 8. The user can practice interviews and access previous interview sessions.
 
-## Project Structure
+## 📁 Project Structure
 
 ```text
 PrepPilot/
